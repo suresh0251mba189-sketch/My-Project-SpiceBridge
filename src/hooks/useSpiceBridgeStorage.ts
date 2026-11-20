@@ -2,11 +2,18 @@ import { User } from 'firebase/auth';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { OPERATIONAL_STAGES, SEED_FARMER_LOTS } from '../data/seedLots';
 import {
+  resolveEffectiveFirebaseConfig,
   signInFirebaseWithGoogle,
   signOutFirebaseAuth,
   subscribeFirebaseAuth,
   testFirestoreConnection,
 } from '../db/firebaseClient';
+import {
+  formatCloudErrorMessage,
+  getFirebaseConfigSignature,
+  isFirebaseConfigured,
+  isFirestorePermissionError,
+} from '../db/firebaseConfig';
 import {
   pullWorkspaceFromFirestore,
   pushWorkspaceToFirestore,
@@ -296,7 +303,7 @@ function readStoredDbConfig(): CloudDatabaseConfig {
     // Fallback to provisioned Firebase adapter
   }
   return {
-    provider: 'firebase',
+    provider: isFirebaseConfigured(null) ? 'firebase' : 'local',
     customFirebaseConfig: null,
     supabaseConfig: null,
   };
@@ -559,10 +566,13 @@ export function useSpiceBridgeStorage() {
     };
   }, []);
 
-  // Subscribe to Firebase Auth & run boot testConnection() when Firebase provider is active
+  // Subscribe to Firebase Auth & run boot testConnection() when Firebase provider is active and configured
   useEffect(() => {
-    if (dbConfig.provider !== 'firebase') {
-      setFirebaseUser(null);
+    setFirebaseUser(null);
+    if (
+      dbConfig.provider !== 'firebase' ||
+      !isFirebaseConfigured(dbConfig.customFirebaseConfig)
+    ) {
       return;
     }
 
@@ -590,7 +600,9 @@ export function useSpiceBridgeStorage() {
   const isCloudReady = useMemo(() => {
     if (!isNavigatorOnline) return false;
     if (dbConfig.provider === 'firebase') {
-      return Boolean(firebaseUser?.uid);
+      return Boolean(
+        isFirebaseConfigured(dbConfig.customFirebaseConfig) && firebaseUser?.uid,
+      );
     }
     if (dbConfig.provider === 'supabase') {
       return Boolean(
@@ -617,6 +629,14 @@ export function useSpiceBridgeStorage() {
 
   const performFullSync = useCallback(async () => {
     if (dbConfig.provider === 'local') {
+      setSyncStatus('local_cache');
+      setSyncError(null);
+      return;
+    }
+    if (
+      dbConfig.provider === 'firebase' &&
+      !isFirebaseConfigured(dbConfig.customFirebaseConfig)
+    ) {
       setSyncStatus('local_cache');
       setSyncError(null);
       return;
@@ -685,18 +705,37 @@ export function useSpiceBridgeStorage() {
       }));
       setSyncStatus('saved');
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      setSyncError(msg);
-      if (
-        msg.toLowerCase().includes('offline') ||
-        msg.toLowerCase().includes('network') ||
-        msg.toLowerCase().includes('failed to fetch')
+      const effectiveFb = resolveEffectiveFirebaseConfig(
+        dbConfig.customFirebaseConfig,
+      );
+      const formattedMsg =
+        dbConfig.provider === 'firebase'
+          ? formatCloudErrorMessage(error, {
+              projectId: effectiveFb.projectId,
+              databaseId: effectiveFb.firestoreDatabaseId,
+            })
+          : error instanceof Error
+            ? error.message
+            : String(error);
+      setSyncError(formattedMsg);
+      const lower = formattedMsg.toLowerCase();
+      if (dbConfig.provider === 'firebase' && isFirestorePermissionError(error)) {
+        setSyncMeta((prev) => ({
+          ...prev,
+          hasPendingChanges: true,
+        }));
+        setSyncStatus('local_cache');
+      } else if (
+        lower.includes('offline') ||
+        lower.includes('unreachable') ||
+        lower.includes('network') ||
+        lower.includes('failed to fetch')
       ) {
         setSyncStatus('queued_offline');
       } else {
         setSyncStatus('error');
       }
-      throw error;
+      throw new Error(formattedMsg);
     }
   }, [applyMergedSnapshot, dbConfig, firebaseUser, isNavigatorOnline]);
 
@@ -712,9 +751,12 @@ export function useSpiceBridgeStorage() {
       return;
     }
 
+    const fbSig = getFirebaseConfigSignature(
+      resolveEffectiveFirebaseConfig(dbConfig.customFirebaseConfig),
+    );
     const sessionSignature =
       dbConfig.provider === 'firebase'
-        ? `firebase:${firebaseUser?.uid ?? ''}:${dbConfig.customFirebaseConfig?.projectId ?? 'default'}`
+        ? `firebase:${firebaseUser?.uid ?? ''}:${fbSig}`
         : `supabase:${dbConfig.supabaseConfig?.url ?? ''}`;
 
     if (hydratedCloudSessionRef.current === sessionSignature) return;
@@ -763,9 +805,27 @@ export function useSpiceBridgeStorage() {
           setSyncStatus('saved');
         })
         .catch((error) => {
-          const msg = error instanceof Error ? error.message : String(error);
-          setSyncError(msg);
-          setSyncStatus('queued_offline');
+          const effectiveFb = resolveEffectiveFirebaseConfig(
+            dbConfig.customFirebaseConfig,
+          );
+          const formattedMsg =
+            dbConfig.provider === 'firebase'
+              ? formatCloudErrorMessage(error, {
+                  projectId: effectiveFb.projectId,
+                  databaseId: effectiveFb.firestoreDatabaseId,
+                })
+              : error instanceof Error
+                ? error.message
+                : String(error);
+          setSyncError(formattedMsg);
+          if (
+            dbConfig.provider === 'firebase' &&
+            isFirestorePermissionError(error)
+          ) {
+            setSyncStatus('local_cache');
+          } else {
+            setSyncStatus('queued_offline');
+          }
         });
     }, 650);
 
@@ -808,7 +868,18 @@ export function useSpiceBridgeStorage() {
 
   const connectFirebaseGoogle = useCallback(async () => {
     setSyncError(null);
-    await signInFirebaseWithGoogle(dbConfig.customFirebaseConfig);
+    const effectiveFb = resolveEffectiveFirebaseConfig(
+      dbConfig.customFirebaseConfig,
+    );
+    try {
+      await signInFirebaseWithGoogle(dbConfig.customFirebaseConfig);
+    } catch (error) {
+      const formatted = formatCloudErrorMessage(error, {
+        projectId: effectiveFb.projectId,
+        databaseId: effectiveFb.firestoreDatabaseId,
+      });
+      throw new Error(formatted);
+    }
   }, [dbConfig.customFirebaseConfig]);
 
   const disconnectFirebaseGoogle = useCallback(async () => {
@@ -838,8 +909,15 @@ export function useSpiceBridgeStorage() {
         message: 'Enter your Supabase URL and Public Anon Key first.',
       };
     }
-    const res = await testSupabaseConnection(dbConfig.supabaseConfig);
-    return { ok: res.reachable, message: res.message };
+    try {
+      const res = await testSupabaseConnection(dbConfig.supabaseConfig);
+      return { ok: res.reachable, message: res.message };
+    } catch (error) {
+      return {
+        ok: false,
+        message: formatCloudErrorMessage(error),
+      };
+    }
   }, [dbConfig]);
 
   const syncNow = useCallback(async () => {
@@ -856,6 +934,112 @@ export function useSpiceBridgeStorage() {
     }
     await performFullSync();
   }, [dbConfig, firebaseUser, performFullSync]);
+
+  const testAndSyncNow = useCallback(async (): Promise<{
+    ok: boolean;
+    message: string;
+  }> => {
+    if (dbConfig.provider === 'local') {
+      try {
+        const probeKey = '__spicebridge_storage_probe__';
+        window.localStorage.setItem(probeKey, 'ok');
+        window.localStorage.removeItem(probeKey);
+        return {
+          ok: true,
+          message: `Local Offline Cache verified (${lots.length} lots, ${batches.length} batches, ${millOrders.length} mill orders stored in browser localStorage).`,
+        };
+      } catch {
+        return {
+          ok: false,
+          message:
+            'Browser localStorage write check failed. Check browser storage permissions.',
+        };
+      }
+    }
+
+    if (!isNavigatorOnline) {
+      return {
+        ok: false,
+        message:
+          'Browser is currently offline. Your records remain safely saved in Local Offline Cache and will sync automatically once online.',
+      };
+    }
+
+    if (dbConfig.provider === 'firebase') {
+      if (!isFirebaseConfigured(dbConfig.customFirebaseConfig)) {
+        return {
+          ok: true,
+          message:
+            'Firebase config is optional and currently blank. SpiceBridge is running cleanly on Local Offline Cache (browser localStorage).',
+        };
+      }
+      const effectiveFb = resolveEffectiveFirebaseConfig(
+        dbConfig.customFirebaseConfig,
+      );
+      const dbLabel = effectiveFb.firestoreDatabaseId || '(default)';
+      const conn = await testFirestoreConnection(dbConfig.customFirebaseConfig);
+      if (!conn.reachable) {
+        return { ok: false, message: conn.message };
+      }
+
+      if (!firebaseUser?.uid) {
+        return {
+          ok: false,
+          message: `Firestore endpoint is reachable for "${effectiveFb.projectId}" (${dbLabel}), but Google Cloud Auth is not signed in yet. Click "Connect Google Account for Cloud Sync" above to authorize and sync.`,
+        };
+      }
+
+      try {
+        await performFullSync();
+        return {
+          ok: true,
+          message: `Connected and synced cleanly with Cloud Firestore (${effectiveFb.projectId} · ${dbLabel}).`,
+        };
+      } catch (error) {
+        return {
+          ok: false,
+          message: formatCloudErrorMessage(error, {
+            projectId: effectiveFb.projectId,
+            databaseId: dbLabel,
+          }),
+        };
+      }
+    }
+
+    // Supabase PostgreSQL path
+    if (!dbConfig.supabaseConfig?.url || !dbConfig.supabaseConfig?.anonKey) {
+      return {
+        ok: false,
+        message: 'Save your Supabase Project URL and Public Anon Key first.',
+      };
+    }
+
+    try {
+      const conn = await testSupabaseConnection(dbConfig.supabaseConfig);
+      if (!conn.reachable) {
+        return { ok: false, message: conn.message };
+      }
+      await performFullSync();
+      return {
+        ok: true,
+        message:
+          'Connected and synced cleanly with Supabase PostgreSQL. Local Offline Cache is up to date.',
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        message: formatCloudErrorMessage(error),
+      };
+    }
+  }, [
+    batches.length,
+    dbConfig,
+    firebaseUser,
+    isNavigatorOnline,
+    lots.length,
+    millOrders.length,
+    performFullSync,
+  ]);
 
   // Existing domain mutations (all preserved + marked dirty for async cloud sync)
   const addLot = useCallback(
@@ -1284,5 +1468,6 @@ export function useSpiceBridgeStorage() {
     disconnectFirebaseGoogle,
     testDbConnection,
     syncNow,
+    testAndSyncNow,
   };
 }

@@ -1,5 +1,6 @@
 import { AlertTriangle, RotateCcw } from 'lucide-react';
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { formatCloudErrorMessage } from '../../db/firebaseConfig';
 
 interface FirestoreErrorBoundaryProps {
   children: ReactNode;
@@ -25,7 +26,9 @@ export class FirestoreErrorBoundary extends Component<
   static getDerivedStateFromError(error: Error): FirestoreErrorBoundaryState {
     return {
       hasError: true,
-      errorMessage: error.message || 'An unexpected application error occurred.',
+      errorMessage: formatCloudErrorMessage(
+        error.message || 'An unexpected application error occurred.',
+      ),
     };
   }
 

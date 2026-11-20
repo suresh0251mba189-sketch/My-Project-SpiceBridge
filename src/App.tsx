@@ -38,8 +38,7 @@ export default function App() {
     firebaseUserUid,
     connectFirebaseGoogle,
     disconnectFirebaseGoogle,
-    testDbConnection,
-    syncNow,
+    testAndSyncNow,
   } = useSpiceBridgeStorage();
 
   const [logModalOpen, setLogModalOpen] = useState(false);
@@ -129,8 +128,7 @@ export default function App() {
           onUpdateConfig={updateDbConfig}
           onConnectFirebaseGoogle={connectFirebaseGoogle}
           onDisconnectFirebaseGoogle={disconnectFirebaseGoogle}
-          onTestConnection={testDbConnection}
-          onSyncNow={syncNow}
+          onTestAndSyncNow={testAndSyncNow}
         />
       </div>
     </FirestoreErrorBoundary>
