@@ -38,7 +38,6 @@ interface DatabaseSettingsModalProps {
     batches: number;
     passports: number;
     millOrders: number;
-    alternativesEntered: number;
   };
   onClose: () => void;
   onUpdateConfig: (next: CloudDatabaseConfig) => void;
@@ -377,8 +376,8 @@ export function DatabaseSettingsModal({
               </div>
             </div>
 
-            {/* 5 Persisted Entity Counts */}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 border-t border-slate-200/80 pt-3">
+            {/* 4 Persisted Entity Counts */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 border-t border-slate-200/80 pt-3">
               <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
                 <p className="text-[10px] text-slate-500">Farmer Lots</p>
                 <p className="font-mono text-sm font-bold text-slate-900 tabular-nums">
@@ -401,12 +400,6 @@ export function DatabaseSettingsModal({
                 <p className="text-[10px] text-slate-500">Mill Orders</p>
                 <p className="font-mono text-sm font-bold text-slate-900 tabular-nums">
                   {recordCounts.millOrders}
-                </p>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 col-span-2 sm:col-span-1">
-                <p className="text-[10px] text-slate-500">Competitors</p>
-                <p className="font-mono text-sm font-bold text-slate-900 tabular-nums">
-                  {recordCounts.alternativesEntered}
                 </p>
               </div>
             </div>
@@ -707,9 +700,8 @@ export function DatabaseSettingsModal({
             <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-xs text-slate-700 leading-relaxed">
               SpiceBridge is running purely on your browser&apos;s{' '}
               <span className="font-mono">localStorage</span> offline cache. All farmer
-              lots, batches, mill orders, competitor research, positioning maps, and
-              strategy challenge progress remain preserved locally. Switch back to
-              Firebase or Supabase at any time to push cached records to the cloud.
+              lots, batches, passports, and mill orders remain preserved locally. Switch
+              back to Firebase or Supabase at any time to push cached records to the cloud.
             </div>
           )}
 

@@ -376,8 +376,7 @@ export function OperatorMfaGate({
                 </h1>
                 <p className="text-xs leading-relaxed text-emerald-100/90 sm:text-sm">
                   Verify your operator identity and second factor before entering the
-                  procurement assay bank, competitor research lab, positioning map, and
-                  strategy challenge workspace.
+                  procurement assay bank, farm-gate pricing, and traceability workspace.
                 </p>
               </div>
 
@@ -433,9 +432,8 @@ export function OperatorMfaGate({
             </div>
 
             <div className="border-t border-white/10 pt-4 text-[11px] leading-relaxed text-emerald-100/80">
-              Your saved lots, competitor matrix, Battlefield Map scores, positioning
-              statement, and AI Strategy Challenge records remain preserved in browser
-              storage across sign-ins and locks.
+              Your saved farmer lots, assay records, batches, and mill orders remain
+              preserved in browser storage across sign-ins and locks.
             </div>
           </aside>
 

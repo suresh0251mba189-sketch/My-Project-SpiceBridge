@@ -65,8 +65,7 @@ export function ResetDemoDataModal({
           <div className="rounded-lg border border-amber-200 bg-turmeric-50/80 p-3.5 text-xs leading-relaxed text-amber-950">
             This will clear saved browser <span className="font-mono font-semibold">localStorage</span>{' '}
             data and restore the original <strong>8 sample farmer lots</strong> (SB-101 through
-            SB-108). Any custom lots, competitor research, Market Battlefield Map scores,
-            positioning statement edits, and AI Strategy Challenge records will be reset.
+            SB-108). Any custom farmer lots and assay records will be reset to defaults.
           </div>
 
           <p className="text-xs text-slate-600 leading-relaxed">

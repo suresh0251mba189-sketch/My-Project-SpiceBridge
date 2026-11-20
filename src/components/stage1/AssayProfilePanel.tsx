@@ -13,13 +13,9 @@ import {
 
 interface AssayProfilePanelProps {
   lot: FarmerLot | undefined;
-  onOpenCompetitionLab: () => void;
 }
 
-export function AssayProfilePanel({
-  lot,
-  onOpenCompetitionLab,
-}: AssayProfilePanelProps) {
+export function AssayProfilePanel({ lot }: AssayProfilePanelProps) {
   const [queuedLotId, setQueuedLotId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -133,27 +129,16 @@ export function AssayProfilePanel({
           </div>
         </div>
 
-        {/* Right Primary CTAs */}
+        {/* Right Primary CTA */}
         <div className="shrink-0 flex flex-col items-stretch sm:items-end gap-2 pt-2 border-t border-slate-100 lg:border-t-0 lg:border-l lg:border-slate-200 lg:pl-6 lg:pt-0">
-          <div className="flex flex-wrap items-center gap-2 justify-end">
-            <button
-              type="button"
-              onClick={onOpenCompetitionLab}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-forest-600/35 bg-forest-50 px-3.5 py-2.5 text-sm font-semibold text-forest-800 transition-colors hover:bg-emerald-100/80 whitespace-nowrap cursor-pointer"
-            >
-              <span>Competition Lab</span>
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setQueuedLotId(lot.id)}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-forest-700 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-forest-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-700 whitespace-nowrap cursor-pointer"
-            >
-              <span>Continue to Batching Lab</span>
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setQueuedLotId(lot.id)}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-forest-700 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-forest-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-700 whitespace-nowrap cursor-pointer"
+          >
+            <span>Continue to Batching Lab</span>
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </button>
           <p className="text-[11px] text-slate-500 text-center sm:text-right">
             Stage 2: Micro-Hub Cleaning &amp; Batching (Coming Next)
           </p>

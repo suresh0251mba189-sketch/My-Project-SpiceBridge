@@ -8,7 +8,6 @@ interface FarmGateAssayWorkspaceProps {
   selectedLotId: string;
   onSelectLot: (lotId: string) => void;
   onRestoreSampleLots: () => void;
-  onOpenCompetitionLab: () => void;
 }
 
 const DEFAULT_FILTERS: LotFilterState = {
@@ -22,7 +21,6 @@ export function FarmGateAssayWorkspace({
   selectedLotId,
   onSelectLot,
   onRestoreSampleLots,
-  onOpenCompetitionLab,
 }: FarmGateAssayWorkspaceProps) {
   const [filters, setFilters] = useState<LotFilterState>(DEFAULT_FILTERS);
 
@@ -82,10 +80,7 @@ export function FarmGateAssayWorkspace({
         onRestoreSampleLots={onRestoreSampleLots}
       />
 
-      <AssayProfilePanel
-        lot={selectedLot}
-        onOpenCompetitionLab={onOpenCompetitionLab}
-      />
+      <AssayProfilePanel lot={selectedLot} />
     </div>
   );
 }

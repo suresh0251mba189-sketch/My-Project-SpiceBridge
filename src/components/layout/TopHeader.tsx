@@ -1,5 +1,4 @@
 import {
-  CheckCircle2,
   Cloud,
   CloudOff,
   HardDrive,
@@ -12,18 +11,14 @@ import {
   Trash2,
 } from 'lucide-react';
 import { OPERATIONAL_STAGES } from '../../data/seedLots';
-import { AppView, OperatorSession, SyncStatus } from '../../types/spicebridge';
+import { OperatorSession, StageId, SyncStatus } from '../../types/spicebridge';
 
 interface TopHeaderProps {
   operatorSession: OperatorSession;
   syncStatus: SyncStatus;
   syncStatusLabel: string;
-  activeView: AppView;
-  battlefieldUnlocked: boolean;
-  positioningStatementUnlocked: boolean;
-  aiChallengeUnlocked: boolean;
-  warRoomUnlocked: boolean;
-  onSelectView: (view: AppView) => void;
+  activeStageId: StageId;
+  onSelectStage: (stageId: StageId) => void;
   onOpenDatabaseSettings: () => void;
   onRestartFromStartPage: () => void;
   onRequestResetDemoData: () => void;
@@ -39,26 +34,12 @@ const OPERATIONAL_LOCK_TOOLTIPS: Record<string, string> = {
     'Locked: Complete Stage 3 Traceability Passports before assigning batches to B2B Mill Orders & 14-day settlement.',
 };
 
-interface StrategyStageItem {
-  id: string;
-  step: number;
-  label: string;
-  view?: AppView;
-  unlocked: boolean;
-  lockedTooltip: string;
-  readyTooltip?: string;
-}
-
 export function TopHeader({
   operatorSession,
   syncStatus,
   syncStatusLabel,
-  activeView,
-  battlefieldUnlocked,
-  positioningStatementUnlocked,
-  aiChallengeUnlocked,
-  warRoomUnlocked,
-  onSelectView,
+  activeStageId,
+  onSelectStage,
   onOpenDatabaseSettings,
   onRestartFromStartPage,
   onRequestResetDemoData,
@@ -71,70 +52,12 @@ export function TopHeader({
         ? 'border-amber-200 bg-turmeric-50 text-amber-900 hover:bg-amber-100/70'
         : 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100';
 
-  const handleNavigateView = (view: AppView) => {
-    onSelectView(view);
+  const handleStageSelect = (stageId: StageId) => {
+    onSelectStage(stageId);
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
-
-  const strategyStages: StrategyStageItem[] = [
-    {
-      id: 'lot-bank',
-      step: 1,
-      label: 'Lot & Venture Bank',
-      view: 'lot-bank',
-      unlocked: true,
-      lockedTooltip: '',
-    },
-    {
-      id: 'competition-lab',
-      step: 2,
-      label: 'Competition Lab',
-      view: 'competition-lab',
-      unlocked: true,
-      lockedTooltip: '',
-    },
-    {
-      id: 'battlefield-map',
-      step: 3,
-      label: 'Market Battlefield Map',
-      view: 'battlefield-map',
-      unlocked: battlefieldUnlocked,
-      lockedTooltip:
-        'Complete at least 3 alternatives with all required fields and evidence in Competition Lab to unlock.',
-    },
-    {
-      id: 'positioning-statement',
-      step: 4,
-      label: 'Positioning Statement',
-      view: 'positioning-statement',
-      unlocked: positioningStatementUnlocked,
-      lockedTooltip:
-        'Define both axes and score SpiceBridge plus all completed alternatives on the Market Battlefield Map to unlock.',
-    },
-    {
-      id: 'ai-challenge',
-      step: 5,
-      label: 'AI Strategy Challenge',
-      view: 'ai-challenge',
-      unlocked: aiChallengeUnlocked,
-      lockedTooltip:
-        'Complete all 5 fields and save your Positioning Statement to unlock.',
-    },
-    {
-      id: 'war-room',
-      step: 6,
-      label: 'Competition War Room',
-      unlocked: false,
-      lockedTooltip: warRoomUnlocked
-        ? 'AI Strategy Challenge complete — Competition War Room module opens in the next rollout.'
-        : 'Complete all 3 AI Strategy Challenge questions and the Final Strategy Review to unlock.',
-      readyTooltip: warRoomUnlocked
-        ? 'Unlocked — Competition War Room workspace opens in the next rollout.'
-        : undefined,
-    },
-  ];
 
   return (
     <header className="border-b border-slate-200 bg-white">
@@ -247,7 +170,7 @@ export function TopHeader({
               <button
                 type="button"
                 onClick={onRestartFromStartPage}
-                title="Sign out to the MFA login screen without deleting your saved lots or competition research"
+                title="Sign out to the MFA login screen without deleting your saved lots"
                 className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <RotateCcw className="h-3 w-3 text-slate-600" aria-hidden="true" />
@@ -273,15 +196,15 @@ export function TopHeader({
         >
           {OPERATIONAL_STAGES.map((stage, index) => {
             if (stage.active) {
-              const isLotBankActive = activeView === 'lot-bank';
+              const isSelected = activeStageId === stage.id;
               return (
                 <button
                   key={stage.id}
                   type="button"
-                  onClick={() => handleNavigateView('lot-bank')}
-                  aria-current={isLotBankActive ? 'step' : undefined}
+                  onClick={() => handleStageSelect(stage.id)}
+                  aria-current={isSelected ? 'step' : undefined}
                   className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left transition-colors cursor-pointer ${
-                    isLotBankActive
+                    isSelected
                       ? 'border-forest-600/50 bg-forest-50 ring-1 ring-forest-600/20'
                       : 'border-forest-600/30 bg-forest-50/70 hover:bg-forest-50'
                   }`}
@@ -310,10 +233,7 @@ export function TopHeader({
               index === OPERATIONAL_STAGES.length - 1 ? 'right-0' : 'left-0';
 
             return (
-              <div
-                key={stage.id}
-                className="group relative"
-              >
+              <div key={stage.id} className="group relative">
                 <div
                   tabIndex={0}
                   aria-disabled="true"
@@ -341,94 +261,6 @@ export function TopHeader({
                   className={`pointer-events-none absolute top-full ${tooltipAlignClass} z-40 mt-1.5 w-64 rounded-lg border border-slate-700/80 bg-slate-900 px-3 py-2 text-[11px] leading-snug text-slate-100 shadow-lg opacity-0 translate-y-0.5 transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0`}
                 >
                   {tooltipText}
-                </div>
-              </div>
-            );
-          })}
-        </nav>
-
-        {/* Strategy & Competition Lab Interactive Stage Bar */}
-        <nav
-          aria-label="Strategy Lab navigation stages"
-          className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-2.5"
-        >
-          <span className="mr-1 text-[11px] font-semibold text-slate-500 whitespace-nowrap">
-            Workspace Stages:
-          </span>
-
-          {strategyStages.map((stage, index) => {
-            const isCurrent = Boolean(stage.view && activeView === stage.view);
-            const isUnlocked = stage.unlocked && Boolean(stage.view);
-            const tooltipAlignClass =
-              index >= strategyStages.length - 2
-                ? 'right-0'
-                : index === 0
-                  ? 'left-0'
-                  : 'left-1/2 -translate-x-1/2';
-
-            if (isUnlocked && stage.view) {
-              const targetView = stage.view;
-              return (
-                <button
-                  key={stage.id}
-                  type="button"
-                  onClick={() => handleNavigateView(targetView)}
-                  aria-current={isCurrent ? 'page' : undefined}
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                    isCurrent
-                      ? 'border-forest-700 bg-forest-700 text-white shadow-xs'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-forest-600/40 hover:bg-forest-50/70 hover:text-forest-900'
-                  }`}
-                >
-                  <CheckCircle2
-                    className={`h-3.5 w-3.5 shrink-0 ${
-                      isCurrent ? 'text-amber-300' : 'text-forest-700'
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <span>
-                    {stage.step}. {stage.label}
-                  </span>
-                </button>
-              );
-            }
-
-            const isWarRoomReady = stage.id === 'war-room' && warRoomUnlocked;
-            const tooltipMessage = stage.readyTooltip ?? stage.lockedTooltip;
-
-            return (
-              <div key={stage.id} className="group relative">
-                <button
-                  type="button"
-                  aria-disabled="true"
-                  title={tooltipMessage}
-                  aria-describedby={`stage-tooltip-${stage.id}`}
-                  onClick={(e) => e.preventDefault()}
-                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium whitespace-nowrap shrink-0 cursor-not-allowed ${
-                    isWarRoomReady
-                      ? 'border-emerald-200 bg-emerald-50/70 text-forest-800'
-                      : 'border-slate-200 bg-slate-50 text-slate-400'
-                  }`}
-                >
-                  {isWarRoomReady ? (
-                    <CheckCircle2
-                      className="h-3.5 w-3.5 shrink-0 text-forest-700"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <Lock className="h-3 w-3 shrink-0 text-slate-400" aria-hidden="true" />
-                  )}
-                  <span>
-                    {stage.step}. {stage.label}
-                  </span>
-                </button>
-
-                <div
-                  id={`stage-tooltip-${stage.id}`}
-                  role="tooltip"
-                  className={`pointer-events-none absolute top-full ${tooltipAlignClass} z-40 mt-1.5 w-60 rounded-lg border border-slate-700/80 bg-slate-900 px-3 py-2 text-[11px] font-normal leading-snug text-slate-100 shadow-lg opacity-0 translate-y-0.5 transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0`}
-                >
-                  {tooltipMessage}
                 </div>
               </div>
             );
