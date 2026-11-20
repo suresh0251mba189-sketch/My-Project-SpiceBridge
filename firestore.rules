@@ -1,0 +1,357 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable Hardened Primitives
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isShortString(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    function isNonEmptyString(val, maxLen) {
+      return val is string && val.size() > 0 && val.size() <= maxLen;
+    }
+
+    function isWorkspaceOwnerDoc(workspaceId) {
+      return isSignedIn() &&
+        workspaceId == request.auth.uid &&
+        exists(/databases/$(database)/documents/workspaces/$(workspaceId)) &&
+        get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerId == request.auth.uid;
+    }
+
+    // Entity Validators
+    function isValidWorkspaceRoot(data) {
+      return data.keys().hasAll([
+          'ownerId', 'operatorEmail', 'operatorName', 'operatorRole', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'operatorEmail', 'operatorName', 'operatorRole', 'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId) &&
+        isNonEmptyString(data.operatorEmail, 160) &&
+        isNonEmptyString(data.operatorName, 120) &&
+        isNonEmptyString(data.operatorRole, 80) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidFarmerLot(data) {
+      return data.keys().hasAll([
+          'ownerId', 'lot_id', 'farmer_name', 'crop', 'crop_label', 'variety',
+          'cluster_geography', 'quantity_kg', 'bags_50kg', 'moisture_pct',
+          'moisture_note', 'purity_pct', 'foreign_matter_note', 'aroma_grade',
+          'offered_price_per_kg', 'mandi_price_per_kg', 'price_note',
+          'bank_transfer_status', 'assay_status', 'assayed_at', 'updated_at'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'lot_id', 'farmer_name', 'crop', 'crop_label', 'variety',
+          'cluster_geography', 'quantity_kg', 'bags_50kg', 'moisture_pct',
+          'moisture_note', 'purity_pct', 'foreign_matter_note', 'aroma_grade',
+          'offered_price_per_kg', 'mandi_price_per_kg', 'price_note',
+          'bank_transfer_status', 'assay_status', 'assayed_at', 'updated_at'
+        ]) &&
+        data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId) &&
+        isValidId(data.lot_id) &&
+        isNonEmptyString(data.farmer_name, 120) &&
+        (data.crop == 'Fennel' || data.crop == 'Cumin') &&
+        isNonEmptyString(data.crop_label, 80) &&
+        isNonEmptyString(data.variety, 120) &&
+        isNonEmptyString(data.cluster_geography, 160) &&
+        (data.quantity_kg is int || data.quantity_kg is float) && data.quantity_kg >= 0 &&
+        (data.bags_50kg is int || data.bags_50kg is float) && data.bags_50kg >= 0 &&
+        (data.moisture_pct is int || data.moisture_pct is float) && data.moisture_pct >= 0 &&
+        isShortString(data.moisture_note, 160) &&
+        (data.purity_pct is int || data.purity_pct is float) && data.purity_pct >= 0 &&
+        isShortString(data.foreign_matter_note, 160) &&
+        isNonEmptyString(data.aroma_grade, 120) &&
+        (data.offered_price_per_kg is int || data.offered_price_per_kg is float) && data.offered_price_per_kg >= 0 &&
+        (data.mandi_price_per_kg == null || data.mandi_price_per_kg is int || data.mandi_price_per_kg is float) &&
+        isShortString(data.price_note, 160) &&
+        isShortString(data.bank_transfer_status, 180) &&
+        (data.assay_status == 'pass' || data.assay_status == 'hold') &&
+        isNonEmptyString(data.assayed_at, 64) &&
+        data.updated_at is timestamp;
+    }
+
+    function isValidMicroHubBatch(data) {
+      return data.keys().hasAll([
+          'ownerId', 'batch_id', 'crop', 'total_kg', 'source_lot_ids',
+          'cleaning_hours', 'bottleneck_utilisation_pct', 'status',
+          'hub_line', 'shift_schedule', 'is_mixed_crop', 'total_bags',
+          'fill_percent', 'batch_equivalent', 'weighted_moisture',
+          'weighted_purity', 'created_at', 'updated_at'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'batch_id', 'crop', 'total_kg', 'source_lot_ids',
+          'cleaning_hours', 'bottleneck_utilisation_pct', 'status',
+          'hub_line', 'shift_schedule', 'is_mixed_crop', 'total_bags',
+          'fill_percent', 'batch_equivalent', 'weighted_moisture',
+          'weighted_purity', 'created_at', 'updated_at'
+        ]) &&
+        data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId) &&
+        isValidId(data.batch_id) &&
+        isNonEmptyString(data.crop, 80) &&
+        (data.total_kg is int || data.total_kg is float) && data.total_kg >= 0 &&
+        data.source_lot_ids is list && data.source_lot_ids.size() <= 50 &&
+        (data.source_lot_ids.size() == 0 || (data.source_lot_ids[0] is string && data.source_lot_ids[0].size() <= 64)) &&
+        (data.cleaning_hours is int || data.cleaning_hours is float) && data.cleaning_hours >= 0 &&
+        (data.bottleneck_utilisation_pct is int || data.bottleneck_utilisation_pct is float) && data.bottleneck_utilisation_pct >= 0 &&
+        (data.status == 'queued' || data.status == 'cleaning' || data.status == 'cleaned') &&
+        isNonEmptyString(data.hub_line, 120) &&
+        isNonEmptyString(data.shift_schedule, 64) &&
+        data.is_mixed_crop is bool &&
+        (data.total_bags is int || data.total_bags is float) && data.total_bags >= 0 &&
+        (data.fill_percent is int || data.fill_percent is float) && data.fill_percent >= 0 &&
+        (data.batch_equivalent is int || data.batch_equivalent is float) && data.batch_equivalent >= 0 &&
+        (data.weighted_moisture is int || data.weighted_moisture is float) && data.weighted_moisture >= 0 &&
+        (data.weighted_purity is int || data.weighted_purity is float) && data.weighted_purity >= 0 &&
+        data.created_at is timestamp &&
+        data.updated_at is timestamp;
+    }
+
+    function isValidTraceabilityPassport(data) {
+      return data.keys().hasAll([
+          'ownerId', 'passport_id', 'batch_id', 'qr_payload',
+          'cluster_breakdown', 'composite_moisture_pct', 'purity_pct',
+          'compliance_status', 'updated_at'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'passport_id', 'batch_id', 'qr_payload',
+          'cluster_breakdown', 'composite_moisture_pct', 'purity_pct',
+          'compliance_status', 'updated_at'
+        ]) &&
+        data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId) &&
+        isValidId(data.passport_id) &&
+        isValidId(data.batch_id) &&
+        isNonEmptyString(data.qr_payload, 1000) &&
+        isNonEmptyString(data.cluster_breakdown, 500) &&
+        (data.composite_moisture_pct is int || data.composite_moisture_pct is float) && data.composite_moisture_pct >= 0 &&
+        (data.purity_pct is int || data.purity_pct is float) && data.purity_pct >= 0 &&
+        isNonEmptyString(data.compliance_status, 120) &&
+        data.updated_at is timestamp;
+    }
+
+    function isValidMillOrder(data) {
+      return data.keys().hasAll([
+          'ownerId', 'order_id', 'batch_id', 'mill_id', 'mill_name',
+          'mill_location', 'crop_summary', 'quantity_kg', 'price_per_kg',
+          'revenue_inr', 'variable_cost_inr', 'contribution_inr',
+          'settlement_status', 'invoiced_at', 'due_date', 'updated_at'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'order_id', 'batch_id', 'mill_id', 'mill_name',
+          'mill_location', 'crop_summary', 'quantity_kg', 'price_per_kg',
+          'revenue_inr', 'variable_cost_inr', 'contribution_inr',
+          'settlement_status', 'invoiced_at', 'due_date', 'updated_at'
+        ]) &&
+        data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId) &&
+        isValidId(data.order_id) &&
+        isValidId(data.batch_id) &&
+        isNonEmptyString(data.mill_id, 64) &&
+        isNonEmptyString(data.mill_name, 160) &&
+        isNonEmptyString(data.mill_location, 160) &&
+        isNonEmptyString(data.crop_summary, 80) &&
+        (data.quantity_kg is int || data.quantity_kg is float) && data.quantity_kg >= 0 &&
+        (data.price_per_kg is int || data.price_per_kg is float) && data.price_per_kg >= 0 &&
+        (data.revenue_inr is int || data.revenue_inr is float) && data.revenue_inr >= 0 &&
+        (data.variable_cost_inr is int || data.variable_cost_inr is float) && data.variable_cost_inr >= 0 &&
+        (data.contribution_inr is int || data.contribution_inr is float) &&
+        (data.settlement_status == 'invoiced_14d' || data.settlement_status == 'clearing' || data.settlement_status == 'settled') &&
+        isNonEmptyString(data.invoiced_at, 64) &&
+        isNonEmptyString(data.due_date, 64) &&
+        data.updated_at is timestamp;
+    }
+
+    function isValidStrategyState(data) {
+      return data.keys().hasAll([
+          'ownerId', 'competitors_list', 'positioning_axes', 'positioning_scores',
+          'positioning_statement', 'strategy_challenge_history',
+          'selected_lot_id', 'active_stage_id', 'active_view', 'updated_at'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'competitors_list', 'positioning_axes', 'positioning_scores',
+          'positioning_statement', 'strategy_challenge_history',
+          'selected_lot_id', 'active_stage_id', 'active_view', 'updated_at'
+        ]) &&
+        data.ownerId is string && data.ownerId == request.auth.uid && isValidId(data.ownerId) &&
+        data.competitors_list is list && data.competitors_list.size() <= 6 &&
+        (data.competitors_list.size() == 0 || data.competitors_list[0] is map) &&
+        data.positioning_axes is map &&
+        data.positioning_scores is map &&
+        data.positioning_statement is map &&
+        data.strategy_challenge_history is map &&
+        isShortString(data.selected_lot_id, 64) &&
+        isNonEmptyString(data.active_stage_id, 64) &&
+        isNonEmptyString(data.active_view, 64) &&
+        data.updated_at is timestamp;
+    }
+
+    // Connection Health Probe
+    match /test/connection {
+      allow get: if isSignedIn();
+    }
+
+    // Workspace Root (Master Gate Document)
+    match /workspaces/{workspaceId} {
+      allow get: if isSignedIn() && isValidId(workspaceId) &&
+        workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
+      allow list: if false;
+      allow create: if isVerifiedUser() && isValidId(workspaceId) &&
+        workspaceId == request.auth.uid &&
+        isValidWorkspaceRoot(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(workspaceId) &&
+        workspaceId == request.auth.uid &&
+        isValidWorkspaceRoot(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'operatorEmail', 'operatorName', 'operatorRole', 'updatedAt'
+        ]);
+      allow delete: if false;
+
+      // 1. Farmer Lots & Assays
+      match /farmer_lots/{lotId} {
+        allow get: if isValidId(lotId) && isWorkspaceOwnerDoc(workspaceId);
+        allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
+        allow create: if isVerifiedUser() && isValidId(lotId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidFarmerLot(incoming()) &&
+          incoming().lot_id == lotId &&
+          incoming().updated_at == request.time;
+        allow update: if isVerifiedUser() && isValidId(lotId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidFarmerLot(incoming()) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().lot_id == existing().lot_id &&
+          incoming().updated_at == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'farmer_name', 'crop', 'crop_label', 'variety', 'cluster_geography',
+            'quantity_kg', 'bags_50kg', 'moisture_pct', 'moisture_note',
+            'purity_pct', 'foreign_matter_note', 'aroma_grade',
+            'offered_price_per_kg', 'mandi_price_per_kg', 'price_note',
+            'bank_transfer_status', 'assay_status', 'assayed_at', 'updated_at'
+          ]);
+        allow delete: if isVerifiedUser() && isValidId(lotId) && isWorkspaceOwnerDoc(workspaceId);
+      }
+
+      // 2. Micro-Hub Batches
+      match /micro_hub_batches/{batchId} {
+        allow get: if isValidId(batchId) && isWorkspaceOwnerDoc(workspaceId);
+        allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
+        allow create: if isVerifiedUser() && isValidId(batchId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidMicroHubBatch(incoming()) &&
+          incoming().batch_id == batchId &&
+          incoming().created_at == request.time &&
+          incoming().updated_at == request.time;
+        allow update: if isVerifiedUser() && isValidId(batchId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidMicroHubBatch(incoming()) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().batch_id == existing().batch_id &&
+          incoming().created_at == existing().created_at &&
+          incoming().updated_at == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'crop', 'total_kg', 'source_lot_ids', 'cleaning_hours',
+            'bottleneck_utilisation_pct', 'status', 'hub_line', 'shift_schedule',
+            'is_mixed_crop', 'total_bags', 'fill_percent', 'batch_equivalent',
+            'weighted_moisture', 'weighted_purity', 'updated_at'
+          ]);
+        allow delete: if isVerifiedUser() && isValidId(batchId) && isWorkspaceOwnerDoc(workspaceId);
+      }
+
+      // 3. Traceability Passports
+      match /traceability_passports/{passportId} {
+        allow get: if isValidId(passportId) && isWorkspaceOwnerDoc(workspaceId);
+        allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
+        allow create: if isVerifiedUser() && isValidId(passportId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidTraceabilityPassport(incoming()) &&
+          incoming().passport_id == passportId &&
+          incoming().updated_at == request.time;
+        allow update: if isVerifiedUser() && isValidId(passportId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidTraceabilityPassport(incoming()) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().passport_id == existing().passport_id &&
+          incoming().batch_id == existing().batch_id &&
+          incoming().updated_at == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'qr_payload', 'cluster_breakdown', 'composite_moisture_pct',
+            'purity_pct', 'compliance_status', 'updated_at'
+          ]);
+        allow delete: if isVerifiedUser() && isValidId(passportId) && isWorkspaceOwnerDoc(workspaceId);
+      }
+
+      // 4. B2B Mill Orders & Settlements
+      match /mill_orders/{orderId} {
+        allow get: if isValidId(orderId) && isWorkspaceOwnerDoc(workspaceId);
+        allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
+        allow create: if isVerifiedUser() && isValidId(orderId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidMillOrder(incoming()) &&
+          incoming().order_id == orderId &&
+          incoming().updated_at == request.time;
+        allow update: if isVerifiedUser() && isValidId(orderId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidMillOrder(incoming()) &&
+          existing().settlement_status != 'settled' &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().order_id == existing().order_id &&
+          incoming().batch_id == existing().batch_id &&
+          incoming().updated_at == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'settlement_status', 'updated_at'
+          ]);
+        allow delete: if isVerifiedUser() && isValidId(orderId) && isWorkspaceOwnerDoc(workspaceId);
+      }
+
+      // 5. Strategy & Competition Lab State
+      match /strategy_state/{stateId} {
+        allow get: if isValidId(stateId) && isWorkspaceOwnerDoc(workspaceId);
+        allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
+        allow create: if isVerifiedUser() && isValidId(stateId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidStrategyState(incoming()) &&
+          incoming().updated_at == request.time;
+        allow update: if isVerifiedUser() && isValidId(stateId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidStrategyState(incoming()) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().updated_at == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'competitors_list', 'positioning_axes', 'positioning_scores',
+            'positioning_statement', 'strategy_challenge_history',
+            'selected_lot_id', 'active_stage_id', 'active_view', 'updated_at'
+          ]);
+        allow delete: if isVerifiedUser() && isValidId(stateId) && isWorkspaceOwnerDoc(workspaceId);
+      }
+    }
+  }
+}

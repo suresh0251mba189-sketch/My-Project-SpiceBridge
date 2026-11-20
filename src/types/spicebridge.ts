@@ -213,5 +213,61 @@ export interface OperatorSession {
   verifiedAt: string;
 }
 
+export interface TraceabilityPassportRecord {
+  passport_id: string;
+  batch_id: string;
+  qr_payload: string;
+  cluster_breakdown: string;
+  composite_moisture_pct: number;
+  purity_pct: number;
+  compliance_status: string;
+}
+
+export type DatabaseProvider = 'firebase' | 'supabase' | 'local';
+
+export type SyncStatus =
+  | 'connected'
+  | 'syncing'
+  | 'saved'
+  | 'queued_offline'
+  | 'local_cache'
+  | 'error';
+
+export interface CustomFirebaseWebConfig {
+  projectId: string;
+  appId: string;
+  apiKey: string;
+  authDomain: string;
+  firestoreDatabaseId?: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+}
+
+export interface SupabaseConnectionConfig {
+  url: string;
+  anonKey: string;
+}
+
+export interface CloudDatabaseConfig {
+  provider: DatabaseProvider;
+  customFirebaseConfig?: CustomFirebaseWebConfig | null;
+  supabaseConfig?: SupabaseConnectionConfig | null;
+}
+
+export interface SpiceBridgeWorkspaceSnapshot {
+  lots: FarmerLot[];
+  selectedLotId: string;
+  batches: ProcessingBatch[];
+  passports: TraceabilityPassportRecord[];
+  millOrders: MillOrder[];
+  activeStageId: StageId;
+  activeView: AppView;
+  alternatives: CompetitorAlternative[];
+  positioningState: PositioningMapState;
+  positioningStatement: PositioningStatementState;
+  aiChallengeState: AIChallengeState;
+}
+
+
 
 

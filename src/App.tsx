@@ -3,7 +3,9 @@ import { OperatorMfaGate } from './components/auth/OperatorMfaGate';
 import { BattlefieldMapWorkspace } from './components/battlefield/BattlefieldMapWorkspace';
 import { AIChallengeWorkspace } from './components/challenge/AIChallengeWorkspace';
 import { CompetitionLabWorkspace } from './components/competition/CompetitionLabWorkspace';
-import { RestartFromStartModal } from './components/layout/RestartFromStartModal';
+import { DatabaseSettingsModal } from './components/database/DatabaseSettingsModal';
+import { FirestoreErrorBoundary } from './components/layout/FirestoreErrorBoundary';
+import { ResetDemoDataModal } from './components/layout/ResetDemoDataModal';
 import { TopHeader } from './components/layout/TopHeader';
 import { PositioningStatementWorkspace } from './components/positioning/PositioningStatementWorkspace';
 import { FarmGateAssayWorkspace } from './components/stage1/FarmGateAssayWorkspace';
@@ -13,6 +15,7 @@ import {
   computeCompetitionSummary,
   computePositioningProgress,
   getNextLotId,
+  hasAnyAlternativeEntry,
   isAIChallengeComplete,
   isPositioningStatementComplete,
 } from './utils/formatters';
@@ -23,6 +26,9 @@ export default function App() {
     selectedLotId,
     setSelectedLotId,
     addLot,
+    batches,
+    passports,
+    millOrders,
     activeView,
     setActiveView,
     alternatives,
@@ -46,14 +52,29 @@ export default function App() {
     completeAIChallengeWithReview,
     operatorSession,
     completeOperatorSignIn,
-    lockOperatorSession,
     restartFromBeginning,
     resetAppFromStart,
+    resetAllDemoData,
     resetToSampleLots,
+    dbConfig,
+    updateDbConfig,
+    syncStatus,
+    syncStatusLabel,
+    lastSyncedAt,
+    hasPendingChanges,
+    isNavigatorOnline,
+    syncError,
+    firebaseUserEmail,
+    firebaseUserUid,
+    connectFirebaseGoogle,
+    disconnectFirebaseGoogle,
+    testDbConnection,
+    syncNow,
   } = useSpiceBridgeStorage();
 
   const [logModalOpen, setLogModalOpen] = useState(false);
-  const [restartModalOpen, setRestartModalOpen] = useState(false);
+  const [resetDemoModalOpen, setResetDemoModalOpen] = useState(false);
+  const [dbModalOpen, setDbModalOpen] = useState(false);
 
   const nextLotId = useMemo(() => getNextLotId(lots), [lots]);
   const selectedLot = useMemo(
@@ -99,27 +120,47 @@ export default function App() {
           ? 'competition-lab'
           : activeView;
 
+  const alternativesEnteredCount = useMemo(
+    () => alternatives.filter(hasAnyAlternativeEntry).length,
+    [alternatives],
+  );
+
   if (!operatorSession || !operatorSession.mfaVerified) {
     return (
-      <OperatorMfaGate
-        onVerified={completeOperatorSignIn}
-        onResetWorkspace={resetAppFromStart}
-      />
+      <FirestoreErrorBoundary>
+        <OperatorMfaGate
+          onVerified={completeOperatorSignIn}
+          onResetWorkspace={resetAppFromStart}
+        />
+      </FirestoreErrorBoundary>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
-      <TopHeader
-        operatorSession={operatorSession}
-        onSignOut={() => {
-          setLogModalOpen(false);
-          setRestartModalOpen(false);
-          lockOperatorSession();
-        }}
-        onRequestRestart={() => setRestartModalOpen(true)}
-        onOpenLogModal={() => setLogModalOpen(true)}
-      />
+    <FirestoreErrorBoundary>
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
+        <TopHeader
+          operatorSession={operatorSession}
+          syncStatus={syncStatus}
+          syncStatusLabel={syncStatusLabel}
+          activeView={resolvedView}
+          battlefieldUnlocked={competitionSummary.battlefieldUnlocked}
+          positioningStatementUnlocked={
+            positioningProgress.positioningStatementUnlocked
+          }
+          aiChallengeUnlocked={aiChallengeUnlocked}
+          warRoomUnlocked={warRoomUnlocked}
+          onSelectView={setActiveView}
+          onOpenDatabaseSettings={() => setDbModalOpen(true)}
+          onRestartFromStartPage={() => {
+            setLogModalOpen(false);
+            setResetDemoModalOpen(false);
+            setDbModalOpen(false);
+            restartFromBeginning();
+          }}
+          onRequestResetDemoData={() => setResetDemoModalOpen(true)}
+          onOpenLogModal={() => setLogModalOpen(true)}
+        />
 
       <main className="flex-1">
         <div className="mx-auto max-w-[1360px] px-4 py-4 sm:px-6 lg:px-8">
@@ -229,21 +270,44 @@ export default function App() {
         onSubmitLot={addLot}
       />
 
-      <RestartFromStartModal
-        isOpen={restartModalOpen}
-        onRestartKeepData={() => {
-          setRestartModalOpen(false);
+      <ResetDemoDataModal
+        isOpen={resetDemoModalOpen}
+        onConfirmReset={() => {
+          setResetDemoModalOpen(false);
           setLogModalOpen(false);
-          restartFromBeginning();
+          setDbModalOpen(false);
+          resetAllDemoData();
         }}
-        onFullResetFromStart={() => {
-          setRestartModalOpen(false);
-          setLogModalOpen(false);
-          resetAppFromStart();
-        }}
-        onCancel={() => setRestartModalOpen(false)}
+        onCancel={() => setResetDemoModalOpen(false)}
       />
-    </div>
+
+      <DatabaseSettingsModal
+        isOpen={dbModalOpen}
+        dbConfig={dbConfig}
+        syncStatus={syncStatus}
+        syncStatusLabel={syncStatusLabel}
+        lastSyncedAt={lastSyncedAt}
+        hasPendingChanges={hasPendingChanges}
+        isNavigatorOnline={isNavigatorOnline}
+        firebaseUserEmail={firebaseUserEmail}
+        firebaseUserUid={firebaseUserUid}
+        syncError={syncError}
+        recordCounts={{
+          lots: lots.length,
+          batches: batches.length,
+          passports: passports.length,
+          millOrders: millOrders.length,
+          alternativesEntered: alternativesEnteredCount,
+        }}
+        onClose={() => setDbModalOpen(false)}
+        onUpdateConfig={updateDbConfig}
+        onConnectFirebaseGoogle={connectFirebaseGoogle}
+        onDisconnectFirebaseGoogle={disconnectFirebaseGoogle}
+        onTestConnection={testDbConnection}
+        onSyncNow={syncNow}
+      />
+      </div>
+    </FirestoreErrorBoundary>
   );
 }
 

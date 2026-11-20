@@ -1,0 +1,461 @@
+{
+  "entities": {
+    "WorkspaceRoot": {
+      "title": "Workspace Root",
+      "description": "Authenticated operator workspace container isolating all SpiceBridge supply chain records per operator account.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "operatorEmail": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 160
+        },
+        "operatorName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "operatorRole": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerId", "operatorEmail", "operatorName", "operatorRole", "createdAt", "updatedAt"]
+    },
+    "FarmerLotRecord": {
+      "title": "Farmer Lot & Assay",
+      "description": "Farm-gate spice harvest lot quality assay and spot pricing record.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "lot_id": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "farmer_name": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "crop": {
+          "type": "string",
+          "enum": ["Fennel", "Cumin"]
+        },
+        "crop_label": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "variety": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "cluster_geography": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "quantity_kg": {
+          "type": "number"
+        },
+        "bags_50kg": {
+          "type": "number"
+        },
+        "moisture_pct": {
+          "type": "number"
+        },
+        "moisture_note": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "purity_pct": {
+          "type": "number"
+        },
+        "foreign_matter_note": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "aroma_grade": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "offered_price_per_kg": {
+          "type": "number"
+        },
+        "mandi_price_per_kg": {
+          "type": "number"
+        },
+        "price_note": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "bank_transfer_status": {
+          "type": "string",
+          "maxLength": 180
+        },
+        "assay_status": {
+          "type": "string",
+          "enum": ["pass", "hold"]
+        },
+        "assayed_at": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "lot_id",
+        "farmer_name",
+        "crop",
+        "crop_label",
+        "variety",
+        "cluster_geography",
+        "quantity_kg",
+        "bags_50kg",
+        "moisture_pct",
+        "moisture_note",
+        "purity_pct",
+        "foreign_matter_note",
+        "aroma_grade",
+        "offered_price_per_kg",
+        "price_note",
+        "bank_transfer_status",
+        "assay_status",
+        "assayed_at",
+        "updated_at"
+      ]
+    },
+    "MicroHubBatchRecord": {
+      "title": "Micro-Hub Batch",
+      "description": "3 MT commercial processing batch pooling approved farmer lots.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "batch_id": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "crop": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "total_kg": {
+          "type": "number"
+        },
+        "source_lot_ids": {
+          "type": "array"
+        },
+        "cleaning_hours": {
+          "type": "number"
+        },
+        "bottleneck_utilisation_pct": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["queued", "cleaning", "cleaned"]
+        },
+        "hub_line": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "shift_schedule": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "is_mixed_crop": {
+          "type": "boolean"
+        },
+        "total_bags": {
+          "type": "number"
+        },
+        "fill_percent": {
+          "type": "number"
+        },
+        "batch_equivalent": {
+          "type": "number"
+        },
+        "weighted_moisture": {
+          "type": "number"
+        },
+        "weighted_purity": {
+          "type": "number"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "batch_id",
+        "crop",
+        "total_kg",
+        "source_lot_ids",
+        "cleaning_hours",
+        "bottleneck_utilisation_pct",
+        "status",
+        "hub_line",
+        "shift_schedule",
+        "is_mixed_crop",
+        "total_bags",
+        "fill_percent",
+        "batch_equivalent",
+        "weighted_moisture",
+        "weighted_purity",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    "TraceabilityPassportRecord": {
+      "title": "Traceability Passport",
+      "description": "Digital Batch Passport containing QR payload, cluster origin breakdown, and compliance status.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "passport_id": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "batch_id": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "qr_payload": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "cluster_breakdown": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "composite_moisture_pct": {
+          "type": "number"
+        },
+        "purity_pct": {
+          "type": "number"
+        },
+        "compliance_status": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "passport_id",
+        "batch_id",
+        "qr_payload",
+        "cluster_breakdown",
+        "composite_moisture_pct",
+        "purity_pct",
+        "compliance_status",
+        "updated_at"
+      ]
+    },
+    "MillOrderRecord": {
+      "title": "B2B Mill Order & Settlement",
+      "description": "Industrial spice mill dispatch invoice, unit economics, and 14-day settlement status.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "order_id": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "batch_id": {
+          "type": "string",
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "mill_id": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "mill_name": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "mill_location": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "crop_summary": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "quantity_kg": {
+          "type": "number"
+        },
+        "price_per_kg": {
+          "type": "number"
+        },
+        "revenue_inr": {
+          "type": "number"
+        },
+        "variable_cost_inr": {
+          "type": "number"
+        },
+        "contribution_inr": {
+          "type": "number"
+        },
+        "settlement_status": {
+          "type": "string",
+          "enum": ["invoiced_14d", "clearing", "settled"]
+        },
+        "invoiced_at": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "due_date": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "order_id",
+        "batch_id",
+        "mill_id",
+        "mill_name",
+        "mill_location",
+        "crop_summary",
+        "quantity_kg",
+        "price_per_kg",
+        "revenue_inr",
+        "variable_cost_inr",
+        "contribution_inr",
+        "settlement_status",
+        "invoiced_at",
+        "due_date",
+        "updated_at"
+      ]
+    },
+    "StrategyLabStateRecord": {
+      "title": "Strategy & Competition Lab State",
+      "description": "Persisted Competitor Matrix, Positioning Axes & Scores, Positioning Statement, and AI Strategy Challenge history.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "competitors_list": {
+          "type": "array"
+        },
+        "positioning_axes": {
+          "type": "object"
+        },
+        "positioning_scores": {
+          "type": "object"
+        },
+        "positioning_statement": {
+          "type": "object"
+        },
+        "strategy_challenge_history": {
+          "type": "object"
+        },
+        "selected_lot_id": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "active_stage_id": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "active_view": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerId",
+        "competitors_list",
+        "positioning_axes",
+        "positioning_scores",
+        "positioning_statement",
+        "strategy_challenge_history",
+        "selected_lot_id",
+        "active_stage_id",
+        "active_view",
+        "updated_at"
+      ]
+    }
+  },
+  "firestore": {
+    "/workspaces/{workspaceId}": {
+      "schema": { "$ref": "#/entities/WorkspaceRoot" },
+      "description": "Operator workspace root document establishing ownership for subcollections."
+    },
+    "/workspaces/{workspaceId}/farmer_lots/{lotId}": {
+      "schema": { "$ref": "#/entities/FarmerLotRecord" },
+      "description": "Farm-gate lot intake and quality assay records."
+    },
+    "/workspaces/{workspaceId}/micro_hub_batches/{batchId}": {
+      "schema": { "$ref": "#/entities/MicroHubBatchRecord" },
+      "description": "Commercial 3 MT cleaning and destoning batches."
+    },
+    "/workspaces/{workspaceId}/traceability_passports/{passportId}": {
+      "schema": { "$ref": "#/entities/TraceabilityPassportRecord" },
+      "description": "Batch digital traceability passports and compliance metadata."
+    },
+    "/workspaces/{workspaceId}/mill_orders/{orderId}": {
+      "schema": { "$ref": "#/entities/MillOrderRecord" },
+      "description": "B2B industrial spice mill orders and 14-day settlement records."
+    },
+    "/workspaces/{workspaceId}/strategy_state/{stateId}": {
+      "schema": { "$ref": "#/entities/StrategyLabStateRecord" },
+      "description": "Competition Lab, Battlefield Map, Positioning Statement, and AI Strategy Challenge state."
+    }
+  }
+}
