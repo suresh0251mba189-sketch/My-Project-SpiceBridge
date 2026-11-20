@@ -19,10 +19,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isVerifiedUser() {
-      return isSignedIn() && request.auth.token.email_verified == true;
-    }
-
     function isValidId(id) {
       return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -40,6 +36,19 @@ service cloud.firestore {
         workspaceId == request.auth.uid &&
         exists(/databases/$(database)/documents/workspaces/$(workspaceId)) &&
         get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerId == request.auth.uid;
+    }
+
+    function canGetSubdoc(workspaceId) {
+      return isSignedIn() &&
+        isValidId(workspaceId) &&
+        workspaceId == request.auth.uid &&
+        (
+          isWorkspaceOwnerDoc(workspaceId) ||
+          (
+            !exists(/databases/$(database)/documents/workspaces/$(workspaceId)) &&
+            (resource == null || existing().ownerId == request.auth.uid)
+          )
+        );
     }
 
     // Entity Validators
@@ -217,14 +226,15 @@ service cloud.firestore {
     // Workspace Root (Master Gate Document)
     match /workspaces/{workspaceId} {
       allow get: if isSignedIn() && isValidId(workspaceId) &&
-        workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
+        workspaceId == request.auth.uid &&
+        (resource == null || existing().ownerId == request.auth.uid);
       allow list: if false;
-      allow create: if isVerifiedUser() && isValidId(workspaceId) &&
+      allow create: if isSignedIn() && isValidId(workspaceId) &&
         workspaceId == request.auth.uid &&
         isValidWorkspaceRoot(incoming()) &&
         incoming().createdAt == request.time &&
         incoming().updatedAt == request.time;
-      allow update: if isVerifiedUser() && isValidId(workspaceId) &&
+      allow update: if isSignedIn() && isValidId(workspaceId) &&
         workspaceId == request.auth.uid &&
         isValidWorkspaceRoot(incoming()) &&
         incoming().ownerId == existing().ownerId &&
@@ -235,16 +245,16 @@ service cloud.firestore {
         ]);
       allow delete: if false;
 
-      // 1. Farmer Lots & Assays
+      // 1. Farmer Lots & Assays (farmer_lots & lots)
       match /farmer_lots/{lotId} {
-        allow get: if isValidId(lotId) && isWorkspaceOwnerDoc(workspaceId);
+        allow get: if isValidId(lotId) && canGetSubdoc(workspaceId);
         allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
-        allow create: if isVerifiedUser() && isValidId(lotId) &&
+        allow create: if isSignedIn() && isValidId(lotId) &&
           isWorkspaceOwnerDoc(workspaceId) &&
           isValidFarmerLot(incoming()) &&
           incoming().lot_id == lotId &&
           incoming().updated_at == request.time;
-        allow update: if isVerifiedUser() && isValidId(lotId) &&
+        allow update: if isSignedIn() && isValidId(lotId) &&
           isWorkspaceOwnerDoc(workspaceId) &&
           isValidFarmerLot(incoming()) &&
           incoming().ownerId == existing().ownerId &&
@@ -257,20 +267,44 @@ service cloud.firestore {
             'offered_price_per_kg', 'mandi_price_per_kg', 'price_note',
             'bank_transfer_status', 'assay_status', 'assayed_at', 'updated_at'
           ]);
-        allow delete: if isVerifiedUser() && isValidId(lotId) && isWorkspaceOwnerDoc(workspaceId);
+        allow delete: if isSignedIn() && isValidId(lotId) && isWorkspaceOwnerDoc(workspaceId);
       }
 
-      // 2. Micro-Hub Batches
-      match /micro_hub_batches/{batchId} {
-        allow get: if isValidId(batchId) && isWorkspaceOwnerDoc(workspaceId);
+      match /lots/{lotId} {
+        allow get: if isValidId(lotId) && canGetSubdoc(workspaceId);
         allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
-        allow create: if isVerifiedUser() && isValidId(batchId) &&
+        allow create: if isSignedIn() && isValidId(lotId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidFarmerLot(incoming()) &&
+          incoming().lot_id == lotId &&
+          incoming().updated_at == request.time;
+        allow update: if isSignedIn() && isValidId(lotId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidFarmerLot(incoming()) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().lot_id == existing().lot_id &&
+          incoming().updated_at == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'farmer_name', 'crop', 'crop_label', 'variety', 'cluster_geography',
+            'quantity_kg', 'bags_50kg', 'moisture_pct', 'moisture_note',
+            'purity_pct', 'foreign_matter_note', 'aroma_grade',
+            'offered_price_per_kg', 'mandi_price_per_kg', 'price_note',
+            'bank_transfer_status', 'assay_status', 'assayed_at', 'updated_at'
+          ]);
+        allow delete: if isSignedIn() && isValidId(lotId) && isWorkspaceOwnerDoc(workspaceId);
+      }
+
+      // 2. Micro-Hub Batches (micro_hub_batches & batches)
+      match /micro_hub_batches/{batchId} {
+        allow get: if isValidId(batchId) && canGetSubdoc(workspaceId);
+        allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
+        allow create: if isSignedIn() && isValidId(batchId) &&
           isWorkspaceOwnerDoc(workspaceId) &&
           isValidMicroHubBatch(incoming()) &&
           incoming().batch_id == batchId &&
           incoming().created_at == request.time &&
           incoming().updated_at == request.time;
-        allow update: if isVerifiedUser() && isValidId(batchId) &&
+        allow update: if isSignedIn() && isValidId(batchId) &&
           isWorkspaceOwnerDoc(workspaceId) &&
           isValidMicroHubBatch(incoming()) &&
           incoming().ownerId == existing().ownerId &&
@@ -283,19 +317,44 @@ service cloud.firestore {
             'is_mixed_crop', 'total_bags', 'fill_percent', 'batch_equivalent',
             'weighted_moisture', 'weighted_purity', 'updated_at'
           ]);
-        allow delete: if isVerifiedUser() && isValidId(batchId) && isWorkspaceOwnerDoc(workspaceId);
+        allow delete: if isSignedIn() && isValidId(batchId) && isWorkspaceOwnerDoc(workspaceId);
       }
 
-      // 3. Traceability Passports
-      match /traceability_passports/{passportId} {
-        allow get: if isValidId(passportId) && isWorkspaceOwnerDoc(workspaceId);
+      match /batches/{batchId} {
+        allow get: if isValidId(batchId) && canGetSubdoc(workspaceId);
         allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
-        allow create: if isVerifiedUser() && isValidId(passportId) &&
+        allow create: if isSignedIn() && isValidId(batchId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidMicroHubBatch(incoming()) &&
+          incoming().batch_id == batchId &&
+          incoming().created_at == request.time &&
+          incoming().updated_at == request.time;
+        allow update: if isSignedIn() && isValidId(batchId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidMicroHubBatch(incoming()) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().batch_id == existing().batch_id &&
+          incoming().created_at == existing().created_at &&
+          incoming().updated_at == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'crop', 'total_kg', 'source_lot_ids', 'cleaning_hours',
+            'bottleneck_utilisation_pct', 'status', 'hub_line', 'shift_schedule',
+            'is_mixed_crop', 'total_bags', 'fill_percent', 'batch_equivalent',
+            'weighted_moisture', 'weighted_purity', 'updated_at'
+          ]);
+        allow delete: if isSignedIn() && isValidId(batchId) && isWorkspaceOwnerDoc(workspaceId);
+      }
+
+      // 3. Traceability Passports (traceability_passports & passports)
+      match /traceability_passports/{passportId} {
+        allow get: if isValidId(passportId) && canGetSubdoc(workspaceId);
+        allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
+        allow create: if isSignedIn() && isValidId(passportId) &&
           isWorkspaceOwnerDoc(workspaceId) &&
           isValidTraceabilityPassport(incoming()) &&
           incoming().passport_id == passportId &&
           incoming().updated_at == request.time;
-        allow update: if isVerifiedUser() && isValidId(passportId) &&
+        allow update: if isSignedIn() && isValidId(passportId) &&
           isWorkspaceOwnerDoc(workspaceId) &&
           isValidTraceabilityPassport(incoming()) &&
           incoming().ownerId == existing().ownerId &&
@@ -306,19 +365,41 @@ service cloud.firestore {
             'qr_payload', 'cluster_breakdown', 'composite_moisture_pct',
             'purity_pct', 'compliance_status', 'updated_at'
           ]);
-        allow delete: if isVerifiedUser() && isValidId(passportId) && isWorkspaceOwnerDoc(workspaceId);
+        allow delete: if isSignedIn() && isValidId(passportId) && isWorkspaceOwnerDoc(workspaceId);
       }
 
-      // 4. B2B Mill Orders & Settlements
-      match /mill_orders/{orderId} {
-        allow get: if isValidId(orderId) && isWorkspaceOwnerDoc(workspaceId);
+      match /passports/{passportId} {
+        allow get: if isValidId(passportId) && canGetSubdoc(workspaceId);
         allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
-        allow create: if isVerifiedUser() && isValidId(orderId) &&
+        allow create: if isSignedIn() && isValidId(passportId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidTraceabilityPassport(incoming()) &&
+          incoming().passport_id == passportId &&
+          incoming().updated_at == request.time;
+        allow update: if isSignedIn() && isValidId(passportId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidTraceabilityPassport(incoming()) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().passport_id == existing().passport_id &&
+          incoming().batch_id == existing().batch_id &&
+          incoming().updated_at == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'qr_payload', 'cluster_breakdown', 'composite_moisture_pct',
+            'purity_pct', 'compliance_status', 'updated_at'
+          ]);
+        allow delete: if isSignedIn() && isValidId(passportId) && isWorkspaceOwnerDoc(workspaceId);
+      }
+
+      // 4. B2B Mill Orders & Settlements (mill_orders & orders)
+      match /mill_orders/{orderId} {
+        allow get: if isValidId(orderId) && canGetSubdoc(workspaceId);
+        allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
+        allow create: if isSignedIn() && isValidId(orderId) &&
           isWorkspaceOwnerDoc(workspaceId) &&
           isValidMillOrder(incoming()) &&
           incoming().order_id == orderId &&
           incoming().updated_at == request.time;
-        allow update: if isVerifiedUser() && isValidId(orderId) &&
+        allow update: if isSignedIn() && isValidId(orderId) &&
           isWorkspaceOwnerDoc(workspaceId) &&
           isValidMillOrder(incoming()) &&
           existing().settlement_status != 'settled' &&
@@ -329,18 +410,40 @@ service cloud.firestore {
           incoming().diff(existing()).affectedKeys().hasOnly([
             'settlement_status', 'updated_at'
           ]);
-        allow delete: if isVerifiedUser() && isValidId(orderId) && isWorkspaceOwnerDoc(workspaceId);
+        allow delete: if isSignedIn() && isValidId(orderId) && isWorkspaceOwnerDoc(workspaceId);
       }
 
-      // 5. Strategy & Competition Lab State
-      match /strategy_state/{stateId} {
-        allow get: if isValidId(stateId) && isWorkspaceOwnerDoc(workspaceId);
+      match /orders/{orderId} {
+        allow get: if isValidId(orderId) && canGetSubdoc(workspaceId);
         allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
-        allow create: if isVerifiedUser() && isValidId(stateId) &&
+        allow create: if isSignedIn() && isValidId(orderId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidMillOrder(incoming()) &&
+          incoming().order_id == orderId &&
+          incoming().updated_at == request.time;
+        allow update: if isSignedIn() && isValidId(orderId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidMillOrder(incoming()) &&
+          existing().settlement_status != 'settled' &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().order_id == existing().order_id &&
+          incoming().batch_id == existing().batch_id &&
+          incoming().updated_at == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'settlement_status', 'updated_at'
+          ]);
+        allow delete: if isSignedIn() && isValidId(orderId) && isWorkspaceOwnerDoc(workspaceId);
+      }
+
+      // 5. Strategy State (strategy_state & strategyState)
+      match /strategy_state/{stateId} {
+        allow get: if isValidId(stateId) && canGetSubdoc(workspaceId);
+        allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
+        allow create: if isSignedIn() && isValidId(stateId) &&
           isWorkspaceOwnerDoc(workspaceId) &&
           isValidStrategyState(incoming()) &&
           incoming().updated_at == request.time;
-        allow update: if isVerifiedUser() && isValidId(stateId) &&
+        allow update: if isSignedIn() && isValidId(stateId) &&
           isWorkspaceOwnerDoc(workspaceId) &&
           isValidStrategyState(incoming()) &&
           incoming().ownerId == existing().ownerId &&
@@ -350,7 +453,27 @@ service cloud.firestore {
             'positioning_statement', 'strategy_challenge_history',
             'selected_lot_id', 'active_stage_id', 'active_view', 'updated_at'
           ]);
-        allow delete: if isVerifiedUser() && isValidId(stateId) && isWorkspaceOwnerDoc(workspaceId);
+        allow delete: if isSignedIn() && isValidId(stateId) && isWorkspaceOwnerDoc(workspaceId);
+      }
+
+      match /strategyState/{stateId} {
+        allow get: if isValidId(stateId) && canGetSubdoc(workspaceId);
+        allow list: if isSignedIn() && workspaceId == request.auth.uid && existing().ownerId == request.auth.uid;
+        allow create: if isSignedIn() && isValidId(stateId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidStrategyState(incoming()) &&
+          incoming().updated_at == request.time;
+        allow update: if isSignedIn() && isValidId(stateId) &&
+          isWorkspaceOwnerDoc(workspaceId) &&
+          isValidStrategyState(incoming()) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().updated_at == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'competitors_list', 'positioning_axes', 'positioning_scores',
+            'positioning_statement', 'strategy_challenge_history',
+            'selected_lot_id', 'active_stage_id', 'active_view', 'updated_at'
+          ]);
+        allow delete: if isSignedIn() && isValidId(stateId) && isWorkspaceOwnerDoc(workspaceId);
       }
     }
   }

@@ -4,9 +4,11 @@ import {
   doc,
   getDoc,
   getDocs,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 import {
   CustomFirebaseWebConfig,
@@ -135,7 +137,9 @@ export async function pullWorkspaceFromFirestore(
   // 1. Farmer Lots
   const lotsPath = `${base}/farmer_lots`;
   try {
-    const lotsSnap = await getDocs(collection(db, lotsPath));
+    const lotsSnap = await getDocs(
+      query(collection(db, lotsPath), where('ownerId', '==', uid)),
+    );
     if (!lotsSnap.empty) {
       snapshot.lots = lotsSnap.docs.map((d) => {
         const data = d.data();
@@ -150,7 +154,9 @@ export async function pullWorkspaceFromFirestore(
   // 2. Micro-Hub Batches
   const batchesPath = `${base}/micro_hub_batches`;
   try {
-    const batchesSnap = await getDocs(collection(db, batchesPath));
+    const batchesSnap = await getDocs(
+      query(collection(db, batchesPath), where('ownerId', '==', uid)),
+    );
     if (!batchesSnap.empty) {
       snapshot.batches = batchesSnap.docs.map((d) => {
         const data = d.data();
@@ -165,7 +171,9 @@ export async function pullWorkspaceFromFirestore(
   // 4. Mill Orders
   const ordersPath = `${base}/mill_orders`;
   try {
-    const ordersSnap = await getDocs(collection(db, ordersPath));
+    const ordersSnap = await getDocs(
+      query(collection(db, ordersPath), where('ownerId', '==', uid)),
+    );
     if (!ordersSnap.empty) {
       snapshot.millOrders = ordersSnap.docs.map((d) => {
         const data = d.data();
@@ -246,7 +254,9 @@ export async function pushWorkspaceToFirestore(
   const lotsColPath = `${base}/farmer_lots`;
   let existingLotIds = new Set<string>();
   try {
-    const existingSnap = await getDocs(collection(db, lotsColPath));
+    const existingSnap = await getDocs(
+      query(collection(db, lotsColPath), where('ownerId', '==', uid)),
+    );
     existingLotIds = new Set(existingSnap.docs.map((d) => d.id));
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, lotsColPath, auth);
@@ -311,7 +321,9 @@ export async function pushWorkspaceToFirestore(
   const batchesColPath = `${base}/micro_hub_batches`;
   let existingBatchIds = new Set<string>();
   try {
-    const existingSnap = await getDocs(collection(db, batchesColPath));
+    const existingSnap = await getDocs(
+      query(collection(db, batchesColPath), where('ownerId', '==', uid)),
+    );
     existingBatchIds = new Set(existingSnap.docs.map((d) => d.id));
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, batchesColPath, auth);
@@ -379,7 +391,9 @@ export async function pushWorkspaceToFirestore(
   );
   let existingPassportIds = new Set<string>();
   try {
-    const existingSnap = await getDocs(collection(db, passportsColPath));
+    const existingSnap = await getDocs(
+      query(collection(db, passportsColPath), where('ownerId', '==', uid)),
+    );
     existingPassportIds = new Set(existingSnap.docs.map((d) => d.id));
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, passportsColPath, auth);
@@ -430,7 +444,9 @@ export async function pushWorkspaceToFirestore(
   const ordersColPath = `${base}/mill_orders`;
   const existingOrdersMap = new Map<string, string>();
   try {
-    const existingSnap = await getDocs(collection(db, ordersColPath));
+    const existingSnap = await getDocs(
+      query(collection(db, ordersColPath), where('ownerId', '==', uid)),
+    );
     for (const d of existingSnap.docs) {
       existingOrdersMap.set(d.id, String(d.data()?.settlement_status ?? ''));
     }

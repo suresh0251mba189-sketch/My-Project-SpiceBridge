@@ -441,21 +441,41 @@
       "schema": { "$ref": "#/entities/FarmerLotRecord" },
       "description": "Farm-gate lot intake and quality assay records."
     },
+    "/workspaces/{workspaceId}/lots/{lotId}": {
+      "schema": { "$ref": "#/entities/FarmerLotRecord" },
+      "description": "Farm-gate lot intake and quality assay records (alias path)."
+    },
     "/workspaces/{workspaceId}/micro_hub_batches/{batchId}": {
       "schema": { "$ref": "#/entities/MicroHubBatchRecord" },
       "description": "Commercial 3 MT cleaning and destoning batches."
+    },
+    "/workspaces/{workspaceId}/batches/{batchId}": {
+      "schema": { "$ref": "#/entities/MicroHubBatchRecord" },
+      "description": "Commercial 3 MT cleaning and destoning batches (alias path)."
     },
     "/workspaces/{workspaceId}/traceability_passports/{passportId}": {
       "schema": { "$ref": "#/entities/TraceabilityPassportRecord" },
       "description": "Batch digital traceability passports and compliance metadata."
     },
+    "/workspaces/{workspaceId}/passports/{passportId}": {
+      "schema": { "$ref": "#/entities/TraceabilityPassportRecord" },
+      "description": "Batch digital traceability passports and compliance metadata (alias path)."
+    },
     "/workspaces/{workspaceId}/mill_orders/{orderId}": {
       "schema": { "$ref": "#/entities/MillOrderRecord" },
       "description": "B2B industrial spice mill orders and 14-day settlement records."
     },
+    "/workspaces/{workspaceId}/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/MillOrderRecord" },
+      "description": "B2B industrial spice mill orders and 14-day settlement records (alias path)."
+    },
     "/workspaces/{workspaceId}/strategy_state/{stateId}": {
       "schema": { "$ref": "#/entities/StrategyLabStateRecord" },
-      "description": "Competition Lab, Battlefield Map, Positioning Statement, and AI Strategy Challenge state."
+      "description": "Workspace navigation and persisted state."
+    },
+    "/workspaces/{workspaceId}/strategyState/{stateId}": {
+      "schema": { "$ref": "#/entities/StrategyLabStateRecord" },
+      "description": "Workspace navigation and persisted state (alias path)."
     }
   }
 }
