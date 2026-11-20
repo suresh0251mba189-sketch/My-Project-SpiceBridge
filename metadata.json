@@ -1,0 +1,6 @@
+{
+  "name": "SpiceBridge",
+  "description": "B2B AgriTech operations and supply-chain platform for transparent farm-gate spice assaying, fair spot pricing, and direct-to-processor traceability.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
