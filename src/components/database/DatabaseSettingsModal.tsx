@@ -739,8 +739,13 @@ export function DatabaseSettingsModal({
                     {FIRESTORE_RULES_SNIPPET}
                   </pre>
                   <p className="text-[11px] text-slate-600 leading-relaxed">
-                    Paste into Firebase Console → Firestore Database → Rules. Until
-                    published, SpiceBridge saves all edits safely in browser{' '}
+                    In Firebase Console (<span className="font-mono">{activeFirebaseProject}</span>):
+                    1) create the <span className="font-mono">(default)</span> Firestore
+                    Database if not yet created, 2) enable Google Sign-In and add{' '}
+                    <span className="font-mono">{currentOriginHost}</span> under
+                    Authentication → Authorized domains, and 3) paste &amp; publish the
+                    rules above under Firestore Database → Rules. Until then, SpiceBridge
+                    saves all edits safely in browser{' '}
                     <span className="font-mono">localStorage</span> (Local Offline Cache).
                   </p>
                 </div>

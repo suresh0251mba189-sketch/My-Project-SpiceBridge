@@ -1,11 +1,21 @@
-import provisionedFirebaseConfig from '../../firebase-applet-config.json';
 import { CustomFirebaseWebConfig } from '../types/spicebridge';
 
 /**
- * Clean Firebase configuration block.
+ * Clean Firebase configuration block for SpiceBridge.
  * Reads optional VITE_FIREBASE_* environment variables first, falling back to
- * the workspace's provisioned firebase-applet-config.json when env vars are unset.
+ * the configured Firebase project below when env vars are unset.
  */
+const DEFAULT_FIREBASE_CONFIG: CustomFirebaseWebConfig = {
+  apiKey: 'AIzaSyD9dpuUMypM7UqxuI0QVtPVOjz1xWAe5K8',
+  authDomain: 'spice-bridge-d22d8.firebaseapp.com',
+  projectId: 'spice-bridge-d22d8',
+  storageBucket: 'spice-bridge-d22d8.firebasestorage.app',
+  messagingSenderId: '782847061911',
+  appId: '1:782847061911:web:98e600dbcdcd2d489dded2',
+  measurementId: 'G-LDPLYBVDT4',
+  firestoreDatabaseId: '(default)',
+};
+
 function readOptionalEnv(key: string): string | undefined {
   const env = import.meta.env as Record<string, string | undefined>;
   const val = env?.[key]?.trim();
@@ -19,6 +29,7 @@ const ENV_FIREBASE_CONFIG: Partial<CustomFirebaseWebConfig> = {
   storageBucket: readOptionalEnv('VITE_FIREBASE_STORAGE_BUCKET'),
   messagingSenderId: readOptionalEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
   appId: readOptionalEnv('VITE_FIREBASE_APP_ID'),
+  measurementId: readOptionalEnv('VITE_FIREBASE_MEASUREMENT_ID'),
   firestoreDatabaseId: readOptionalEnv('VITE_FIREBASE_DATABASE_ID'),
 };
 
@@ -58,20 +69,12 @@ export function getDefaultFirebaseConfig(): CustomFirebaseWebConfig {
       storageBucket: ENV_FIREBASE_CONFIG.storageBucket || '',
       messagingSenderId: ENV_FIREBASE_CONFIG.messagingSenderId || '',
       appId: ENV_FIREBASE_CONFIG.appId!,
+      measurementId: ENV_FIREBASE_CONFIG.measurementId || '',
       firestoreDatabaseId: ENV_FIREBASE_CONFIG.firestoreDatabaseId || '(default)',
     };
   }
 
-  return {
-    apiKey: provisionedFirebaseConfig?.apiKey || '',
-    authDomain: provisionedFirebaseConfig?.authDomain || '',
-    projectId: provisionedFirebaseConfig?.projectId || '',
-    storageBucket: provisionedFirebaseConfig?.storageBucket || '',
-    messagingSenderId: provisionedFirebaseConfig?.messagingSenderId || '',
-    appId: provisionedFirebaseConfig?.appId || '',
-    firestoreDatabaseId:
-      provisionedFirebaseConfig?.firestoreDatabaseId || '(default)',
-  };
+  return { ...DEFAULT_FIREBASE_CONFIG };
 }
 
 export function resolveOptionalFirebaseConfig(
@@ -103,6 +106,7 @@ export function normalizeFirebaseConfig(
     storageBucket: config.storageBucket?.trim() || '',
     messagingSenderId: config.messagingSenderId?.trim() || '',
     appId: config.appId.trim(),
+    measurementId: config.measurementId?.trim() || '',
     firestoreDatabaseId: config.firestoreDatabaseId?.trim() || '(default)',
   };
 }
@@ -219,6 +223,7 @@ export function parseFirebaseWebConfigInput(
   const appId = str('appId');
   const storageBucket = str('storageBucket');
   const messagingSenderId = str('messagingSenderId');
+  const measurementId = str('measurementId');
   const firestoreDatabaseId =
     str('firestoreDatabaseId') ||
     str('databaseId') ||
@@ -242,6 +247,7 @@ export function parseFirebaseWebConfigInput(
       storageBucket,
       messagingSenderId,
       appId,
+      measurementId,
       firestoreDatabaseId,
     },
   };
@@ -339,7 +345,7 @@ export function formatCloudErrorMessage(
     lower.includes('network') ||
     lower.includes('failed to fetch')
   ) {
-    return `Cloud database is currently unreachable or offline. All edits are safely saved in your Local Offline Cache and queued to sync.`;
+    return `Cloud Firestore is unreachable or not yet initialized for "${projectLabel}". Confirm that Firestore Database is created in Firebase Console and your network is online — all edits remain safely saved in Local Offline Cache.`;
   }
 
   if (lower.includes('auth/unauthorized-domain')) {

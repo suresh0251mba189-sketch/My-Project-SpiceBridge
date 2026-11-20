@@ -13,6 +13,7 @@ import {
   doc,
   getDocFromServer,
   getFirestore,
+  initializeFirestore,
 } from 'firebase/firestore';
 import { CustomFirebaseWebConfig } from '../types/spicebridge';
 import {
@@ -105,6 +106,9 @@ export function getFirebaseServices(
   if (effectiveConfig.messagingSenderId) {
     firebaseOptions.messagingSenderId = effectiveConfig.messagingSenderId;
   }
+  if (effectiveConfig.measurementId) {
+    firebaseOptions.measurementId = effectiveConfig.measurementId;
+  }
 
   const app = existingApp
     ? existingApp
@@ -114,10 +118,19 @@ export function getFirebaseServices(
       );
 
   const dbName = effectiveConfig.firestoreDatabaseId?.trim();
-  const db =
-    dbName && dbName !== '(default)'
-      ? getFirestore(app, dbName)
-      : getFirestore(app);
+  const targetDbId = dbName && dbName !== '(default)' ? dbName : undefined;
+  let db: Firestore;
+  try {
+    db = targetDbId
+      ? initializeFirestore(
+          app,
+          { experimentalAutoDetectLongPolling: true },
+          targetDbId,
+        )
+      : initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+  } catch {
+    db = targetDbId ? getFirestore(app, targetDbId) : getFirestore(app);
+  }
 
   const auth = getAuth(app);
 
@@ -185,11 +198,10 @@ export async function testFirestoreConnection(
     const lower = msg.toLowerCase();
 
     if (lower.includes('the client is offline') || lower.includes('unavailable')) {
-      console.error('Please check your Firebase configuration.', msg);
       return {
         reachable: false,
         offline: true,
-        message: `Firestore unreachable for "${resolved.projectId}" (client appears offline or network blocked).`,
+        message: `Cloud Firestore is unreachable or not yet initialized for "${resolved.projectId}". Confirm Firestore Database is created in Firebase Console and you are online — Local Offline Cache remains active.`,
       };
     }
 

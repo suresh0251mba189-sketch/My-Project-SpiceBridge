@@ -241,6 +241,7 @@ export interface CustomFirebaseWebConfig {
   firestoreDatabaseId?: string;
   storageBucket?: string;
   messagingSenderId?: string;
+  measurementId?: string;
 }
 
 export interface SupabaseConnectionConfig {
